@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <!-- Material UI -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mui/material@5.10.0/dist/material-ui.min.css" rel="stylesheet">
+
+    <style>
+        /* Global Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f7fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Ensure full screen height */
+            padding: 0;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        /* Room Entry Styles */
+        .room-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            animation: fadeIn 1.5s ease-out;
+            position: absolute;  /* Fix position */
+        }
+
+        .room-container h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            animation: scaleUp 1s ease-out;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .room-container input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 25px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            color: #333;
+            transition: border-color 0.3s;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .room-container input:focus {
+            border-color: #009688;
+            outline: none;
+        }
+
+        /* Chat Room Styles */
+        #chatRoom {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            max-width: 600px;
+            height: 85vh;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+            position: absolute; /* Fix position */
+            top: 50%;  /* Center vertically */
+            transform: translateY(-50%); /* Center vertically */
+        }
+
+        #chatRoom h2 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 15px;
+            animation: worldNumberOneAnimation 2s ease-out;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Add animation to room name */
+        @keyframes worldNumberOneAnimation {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.5);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translateY(-5px) scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Chat Message Styles */
+        #messages {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 12px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column; /* Align messages top to bottom */
+            justify-content: flex-start; /* Start at the top */
+        }
+
+        .message-box {
+            padding: 12px;
+            background-color: #e1f5fe;
+            border-radius: 10px;
+            color: #333;
+            margin-bottom: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            animation: fadeInMessage 0.5s ease;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .message-box:hover {
+            background-color: #b3e5fc;
+            transform: translateX(5px);
+        }
+
+        /* Message Fade-In Animation */
+        @keyframes fadeInMessage {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #typingIndicator {
+            color: #888;
+            font-size: 14px;
+            display: none;
+            margin-top: 10px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .typing-dots {
+            display: inline-block;
+            position: relative;
+            font-size: 18px;
+        }
+
+        .dot {
+            animation: typingDot 1.5s infinite linear;
+            color: #888;
+            margin: 0 3px;
+        }
+
+        .dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes typingDot {
+            0% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
+        textarea {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            resize: none;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        textarea:focus {
+            border-color: #009688;
+            outline: none;
+        }
+
+        /* Button Styles */
+        .MuiButton-root {
+            font-size: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .MuiButton-root:hover {
+            background-color: #00796b;
+        }
+
+        .MuiButton-contained {
+            font-weight: bold;
+        }
+
+        /* Fade-in Animation for Enter Room */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .room-container {
+                padding: 20px;
+            }
+
+            .enter-btn {
+                font-size: 16px;
+                padding: 12px;
+            }
+
+            .clear-btn, .exit-btn {
+                font-size: 14px;
+                padding: 12px;
+            }
+
+            #chatRoom h2 {
+                font-size: 20px;
+            }
+
+            .message-box {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Room Entry Form -->
+<div class="room-container" id="roomEntryContainer">
+    <h2>Enter Room to Start Chatting</h2>
+    <input type="text" id="roomName" placeholder="Enter Room Name" autofocus />
+    <button class="MuiButton-root MuiButton-contained MuiButton-containedPrimary" onclick="enterRoom()">Enter Room</button>
+</div>
+
+<!-- Chat Room Interface -->
+<div id="chatRoom">
+    <h2><span id="roomDisplay"></span></h2>
+    <div id="messages"></div>
+    <p id="typingIndicator" class="typing-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></p>
+    <textarea id="messageInput" placeholder="Type your message..." oninput="handleTyping()" onkeydown="sendOnEnter(event)"></textarea>
+    <button class="MuiButton-root MuiButton-contained MuiButton-containedSecondary" onclick="clearChat()">Clear Chat</button>
+    <button class="MuiButton-root MuiButton-contained MuiButton-containedDefault" onclick="exitRoom()">Exit Room</button>
+</div>
+
+<!-- Typing Sound -->
+<audio id="typingSound" src="https://www.freesound.org/data/previews/322/322685_4771647-lq.mp3" preload="auto"></audio>
+<!-- Keyboard Sound -->
+<audio id="keyboardSound" src="https://www.freesound.org/data/previews/130/130218_2110949-lq.mp3" preload="auto"></audio>
+
+<script>
+    let stompClient = null;
+    let typingTimer;
+    let doneTypingInterval = 1000;  // Time to wait after the last key is pressed before sending the message
+    let isTyping = false;
+    let currentRoom = "";  // Room name to join and communicate
+    let username = "User" + Math.floor(Math.random() * 1000);  // Random username for testing
+    let currentTypingText = "";  // The text that the user is currently typing
+
+    // WebSocket connection and room joining
+    function connectToRoom(roomName) {
+        var socket = new SockJS('/chat');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function (frame) {
+            console.log('Connected to room: ' + roomName);
+
+            // Subscribe to messages in the room
+            stompClient.subscribe(`/topic/room/${roomName}`, function (messageOutput) {
+                showMessage(JSON.parse(messageOutput.body));
+            });
+
+            // Subscribe to typing events in the room
+            stompClient.subscribe(`/topic/typing/${roomName}`, function (messageOutput) {
+                showTypingIndicator(JSON.parse(messageOutput.body));
+            });
+        });
+    }
+
+    function enterRoom() {
+        const roomName = document.getElementById('roomName').value;
+        if (roomName) {
+            currentRoom = roomName;
+            document.getElementById('roomDisplay').textContent = roomName; // Show room name
+            document.getElementById('roomEntryContainer').style.display = 'none';  // Hide room entry form
+            document.getElementById('chatRoom').style.display = 'flex';  // Show chat room interface
+            connectToRoom(roomName);
+        }
+    }
+
+    function showMessage(message) {
+        if (message.sender !== username) {  // Don't display own messages
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message-box');
+            messageContainer.innerHTML = `<strong>${message.sender}:</strong> ${message.content}`;
+            document.getElementById('messages').appendChild(messageContainer);  // Append message to the bottom
+            scrollToBottom();  // Scroll to the latest message
+        }
+    }
+
+    function showTypingIndicator(message) {
+        if (message.typing && message.sender !== username) {
+            document.getElementById('typingIndicator').style.display = 'block';
+        } else {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+    }
+
+    function handleTyping() {
+        const messageInput = document.getElementById('messageInput');
+        currentTypingText = messageInput.value;  // Store the current text being typed
+
+        // Play keyboard sound on typing
+        const keyboardSound = document.getElementById('keyboardSound');
+        keyboardSound.play();
+
+        if (!isTyping) {
+            isTyping = true;
+            sendTypingIndicator(true, currentTypingText);
+        }
+
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(doneTyping, doneTypingInterval);
+    }
+
+    function doneTyping() {
+        isTyping = false;
+        sendTypingIndicator(false, currentTypingText);
+        sendMessage();
+    }
+
+    function sendTypingIndicator(typing, text) {
+        const message = {
+            content: text,
+            typing: typing,
+            sender: username
+        };
+        stompClient.send(`/app/typing/${currentRoom}`, {}, JSON.stringify(message));
+    }
+
+    function sendOnEnter(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput.value) {
+            const message = {
+                content: messageInput.value,
+                typing: false,
+                sender: username
+            };
+            stompClient.send(`/app/sendMessage/${currentRoom}`, {}, JSON.stringify(message));
+            messageInput.value = '';  // Clear input field after sending
+        }
+    }
+
+    function clearChat() {
+        document.getElementById('messages').innerHTML = '';
+    }
+
+    function exitRoom() {
+        document.getElementById('roomEntryContainer').style.display = 'flex';  // Show room entry form
+        document.getElementById('chatRoom').style.display = 'none';  // Hide chat room interface
+        stompClient.disconnect(() => console.log('Disconnected from room: ' + currentRoom));  // Disconnect from WebSocket
+        currentRoom = "";  // Reset the room name
+    }
+
+    // Scroll to the bottom of the messages container
+    function scrollToBottom() {
+        const messagesContainer = document.getElementById('messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
