@@ -25,7 +25,7 @@
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #f4f7fc;
-            display: flex;
+            display:flex;
             justify-content: center;
             align-items: center;
             height: 100vh; /* Ensure full screen height */
@@ -40,14 +40,16 @@
             border-radius: 15px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
             width: 100%;
+            flex-direction: column;
             max-width: 420px;
             text-align: center;
             animation: fadeIn 1.5s ease-out;
-            position: absolute;  /* Fix position */
-        }
+            position: absolute;
+            }
 
         .room-container h2 {
             font-size: 28px;
+
             font-weight: 600;
             color: #333;
             margin-bottom: 20px;
