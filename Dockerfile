@@ -8,22 +8,22 @@ WORKDIR /app
 COPY pom.xml ./
 
 # Download Maven dependencies (this will speed up the next build if the dependencies don’t change)
-RUN mvn clean install -DskipTests
+RUN mvn dependency:go-offline
 
 # Copy the rest of the application code to the container
-COPY . .
+COPY src ./src
 
 # Build the Spring Boot app (creates a bootable jar)
 RUN mvn clean package -DskipTests
 
+
 # Stage 2: Run the application
 FROM openjdk:17-jdk-slim
 
+WORKDIR /app
 # Expose the port your Spring Boot application will run on
-EXPOSE 8080
-
 # Copy the built .jar file from the build stage
-COPY --from=build /app/target/*.jar /app.jar
-
+COPY --from=build /app/target/*.jar /chat-0.0.1-SNAPSHOT.jar
+EXPOSE 8080
 # Run the application
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+ENTRYPOINT ["java", "-jar", "/chat-0.0.1-SNAPSHOT.jar"]
